@@ -16,7 +16,6 @@ class CourseOut(BaseModel):
     level: str
     image_url: str | None = None
 
-    # ✅ Pydantic v2 way of replacing orm_mode
     model_config = ConfigDict(from_attributes=True)
 
 class EnrollmentCreate(BaseModel):
