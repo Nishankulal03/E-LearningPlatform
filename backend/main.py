@@ -38,6 +38,8 @@ def startup_event():
         db.commit()
     db.close()
 
+
+# ------------------ AUTH ------------------
 @app.post("/auth/signup", status_code=201)
 def signup(payload: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == payload.username).first():
@@ -48,6 +50,7 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     return {"id": user.id, "username": user.username}
 
+
 @app.post("/auth/login", response_model=Token)
 def login(form_data: UserCreate, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form_data.username).first()
@@ -56,6 +59,8 @@ def login(form_data: UserCreate, db: Session = Depends(get_db)):
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
 
+
+# ------------------ COURSES ------------------
 @app.get("/courses", response_model=list[CourseOut])
 def list_courses(level: str | None = None, db: Session = Depends(get_db)):
     q = db.query(Course)
@@ -63,13 +68,16 @@ def list_courses(level: str | None = None, db: Session = Depends(get_db)):
         q = q.filter(Course.level == level)
     return q.all()
 
+
 @app.get("/courses/{course_id}", response_model=CourseOut)
 def get_course(course_id: int, db: Session = Depends(get_db)):
-    course = db.get(Course, course_id)   # ✅ fixed
+    course = db.get(Course, course_id)  # ✅ fixed
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     return course
 
+
+# ------------------ ENROLLMENTS ------------------
 @app.post("/enrollments", response_model=EnrollmentOut)
 def create_enrollment(en: EnrollmentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     existing = db.query(Enrollment).filter(
@@ -77,7 +85,7 @@ def create_enrollment(en: EnrollmentCreate, current_user: User = Depends(get_cur
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Already enrolled")
-    course = db.get(Course, en.course_id)   # ✅ fixed
+    course = db.get(Course, en.course_id)  # ✅ fixed
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     enrollment = Enrollment(user_id=current_user.id, course_id=course.id)
@@ -86,19 +94,22 @@ def create_enrollment(en: EnrollmentCreate, current_user: User = Depends(get_cur
     db.refresh(enrollment)
     return enrollment
 
+
 @app.get("/me/enrollments", response_model=list[EnrollmentOut])
 def my_enrollments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.query(Enrollment).filter(Enrollment.user_id == current_user.id).all()
 
+
 @app.patch("/enrollments/{enrollment_id}/progress", response_model=EnrollmentOut)
 def update_progress(enrollment_id: int, payload: ProgressUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    enrollment = db.get(Enrollment, enrollment_id)   # ✅ fixed
+    enrollment = db.get(Enrollment, enrollment_id)  # ✅ fixed
     if not enrollment or enrollment.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Enrollment not found")
     enrollment.progress_pct = payload.progress_pct
     db.commit()
     db.refresh(enrollment)
     return enrollment
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
