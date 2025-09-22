@@ -1,4 +1,5 @@
-fastapi==0.95.2
+fastapi==0.94.1
+starlette==0.26.1
 uvicorn==0.22.0
 sqlalchemy==2.0.19
 pydantic==1.10.12
@@ -7,4 +8,3 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-dotenv==1.0.1
 psycopg2-binary==2.9.9
-starlette==0.26.1
