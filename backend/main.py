@@ -2,9 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from auth import get_password_hash, create_access_token, verify_password, get_current_user, get_db
-from models import User, Course, Enrollment
+from models import User, Course, Enrollment, Base
 from schemas import UserCreate, Token, CourseOut, EnrollmentCreate, EnrollmentOut, ProgressUpdate
-from seed import seed
+from db import engine
 import uvicorn
 
 app = FastAPI()
@@ -13,17 +13,30 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins for development
-    allow_credentials=False,  # Set to False when using allow_origins=["*"]
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Ensure DB tables + seed data
-seed()
-
-@app.options("/auth/signup")
-def signup_options():
-    return {}
+# ✅ Ensure DB tables + seed data on startup
+@app.on_event("startup")
+def startup_event():
+    Base.metadata.create_all(bind=engine)
+    db = next(get_db())
+    if not db.query(Course).first():
+        seed_courses = [
+            Course(title="Intro to Python", level="Beginner", description="Learn Python basics."),
+            Course(title="Advanced Python", level="Advanced", description="Deep dive into Python."),
+            Course(title="Web Development with FastAPI", level="Intermediate", description="Build APIs with FastAPI."),
+            Course(title="Databases with SQLAlchemy", level="Intermediate", description="Master SQLAlchemy ORM."),
+            Course(title="Machine Learning 101", level="Beginner", description="Intro to ML concepts."),
+            Course(title="Deep Learning with PyTorch", level="Advanced", description="Neural networks & PyTorch."),
+            Course(title="Frontend with React", level="Beginner", description="Learn React fundamentals."),
+            Course(title="DevOps Basics", level="Intermediate", description="CI/CD, Docker, and cloud basics."),
+        ]
+        db.add_all(seed_courses)
+        db.commit()
+    db.close()
 
 @app.post("/auth/signup", status_code=201)
 def signup(payload: UserCreate, db: Session = Depends(get_db)):
@@ -34,10 +47,6 @@ def signup(payload: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     return {"id": user.id, "username": user.username}
-
-@app.options("/auth/login")
-def login_options():
-    return {}
 
 @app.post("/auth/login", response_model=Token)
 def login(form_data: UserCreate, db: Session = Depends(get_db)):
@@ -56,7 +65,7 @@ def list_courses(level: str | None = None, db: Session = Depends(get_db)):
 
 @app.get("/courses/{course_id}", response_model=CourseOut)
 def get_course(course_id: int, db: Session = Depends(get_db)):
-    course = db.query(Course).get(course_id)
+    course = db.get(Course, course_id)   # ✅ fixed
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     return course
@@ -68,7 +77,7 @@ def create_enrollment(en: EnrollmentCreate, current_user: User = Depends(get_cur
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Already enrolled")
-    course = db.query(Course).get(en.course_id)
+    course = db.get(Course, en.course_id)   # ✅ fixed
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
     enrollment = Enrollment(user_id=current_user.id, course_id=course.id)
@@ -83,7 +92,7 @@ def my_enrollments(current_user: User = Depends(get_current_user), db: Session =
 
 @app.patch("/enrollments/{enrollment_id}/progress", response_model=EnrollmentOut)
 def update_progress(enrollment_id: int, payload: ProgressUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    enrollment = db.query(Enrollment).get(enrollment_id)
+    enrollment = db.get(Enrollment, enrollment_id)   # ✅ fixed
     if not enrollment or enrollment.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Enrollment not found")
     enrollment.progress_pct = payload.progress_pct
