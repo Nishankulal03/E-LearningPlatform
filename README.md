@@ -51,9 +51,16 @@ E-LearningPlatform/
 │   │   └── utils/
 │   ├── package.json
 │   ├── vite.config.js
-│  
+│
 
 ````
+
+---
+
+## 🌐 Live Demo
+
+- **Frontend (Vercel):** 👉 [Live Frontend](https://e-learning-platform-ifqs.vercel.app/)  
+- **Backend (Render API):** 👉 [Live API](https://e-learningplatform-2.onrender.com/)  
 
 ---
 
@@ -181,8 +188,10 @@ npm run dev
 * `PATCH /enrollments/{id}/progress` → Update progress
 
 ---
+
 ## 👤 Author
 
 **Nishan Kulal**
-
-
+  
+I’ll plug them directly into the README so you can use it as is.
+```
